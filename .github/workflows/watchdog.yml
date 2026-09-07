@@ -1,0 +1,40 @@
+name: cvbets watchdog
+
+on:
+  schedule:
+    # 45 min after the daily loop should have run.
+    - cron: '45 7 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: cvbets-watchdog
+
+jobs:
+  watchdog:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check a successful daily run exists in the last 24h
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          set -eu
+          since=$(date -u -d '24 hours ago' +%Y-%m-%dT%H:%M:%SZ)
+          resp=$(curl -s -H "Authorization: Bearer $GH_TOKEN" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/daily.yml/runs?created=%3E=${since}&per_page=100")
+          ok=$(echo "$resp" | jq '[.workflow_runs[] | select(.conclusion=="success")] | length')
+          total=$(echo "$resp" | jq '.total_count')
+          echo "runs in last 24h: $total, successful: $ok"
+          if [ "$ok" -eq 0 ]; then
+            curl -s -X POST -H 'Content-Type: application/json' \
+              -d "{\"content\": \":warning: **cvbets watchdog**: no successful daily loop run in the last 24h (runs found: ${total}). Laptop-free operation is degraded — check https://github.com/${GITHUB_REPOSITORY}/actions\"}" \
+              "$WEBHOOK"
+            echo "watchdog alert posted"
+          else
+            echo "daily loop healthy — no alert"
+          fi
