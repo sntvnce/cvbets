@@ -1,0 +1,62 @@
+name: cvbets daily loop
+
+on:
+  schedule:
+    # 07:00 UTC = midnight PDT (11pm PST). Idempotent loop, so an extra
+    # manual run (workflow_dispatch) never corrupts anything.
+    - cron: '0 7 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cvbets-daily
+  cancel-in-progress: false
+
+jobs:
+  daily:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install httpx
+
+      - name: Run nightly loop (ingest -> chalkbot -> experts -> grade)
+        env:
+          PANDASCORE_TOKEN: ${{ secrets.PANDASCORE_TOKEN }}
+        run: python daily.py
+
+      - name: Regenerate dashboard
+        run: python scripts/generate_site.py
+
+      - name: Commit ledger + dashboard
+        run: |
+          git config user.name "cvbets-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/ledger.db docs/index.html
+          if git diff --cached --quiet; then
+            echo "nothing changed"
+          else
+            git commit -q -m "nightly: $(date -u +%F) loop run [skip ci]"
+            git push
+          fi
+
+      - name: Post summary to Discord
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: python scripts/notify_discord.py
+
+      - name: Notify on failure
+        if: failure()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          python scripts/notify_discord.py \
+            ":x: cvbets nightly run FAILED on GitHub Actions — check https://github.com/sntvnce/cvbets/actions (ledger unchanged this run)."

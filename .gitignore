@@ -5,8 +5,9 @@
 __pycache__/
 .venv/
 
-# regenerable data layer (schema lives in schema.sql, log in data/daily.log)
-data/*.db
+# SQLite side files (the .db itself IS tracked — it is the cloud loop's store)
 data/*.db-shm
 data/*.db-wal
+
+# local logs (Actions regenerates its own summary via daily.py output)
 data/daily.log
