@@ -1,12 +1,16 @@
-"""daily.py — Phase 1 daily loop: ingest -> chalkbot -> grade, then summary.
+"""daily.py — nightly loop: ingest -> chalkbot -> experts -> grade -> summary.
 
 Run: python daily.py   (reads PANDASCORE_TOKEN from env or ./.env)
 A timestamped copy of each run summary is appended to data/daily.log.
 """
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent / "scripts"))
+
 import chalkbot
+import experts
 import grade
 import ingest
 from db import init_db, log
@@ -21,6 +25,7 @@ def main():
     try:
         ing = ingest.run(conn)
         cb = chalkbot.run(conn)
+        ex = experts.run(conn=conn)
         gr = grade.run(conn)
 
         upcoming = conn.execute(
@@ -40,7 +45,7 @@ def main():
             f"{ing['upcoming']['updated']} updated; past {ing['past']['pages']} page(s) "
             f"{ing['past']['new']} new / {ing['past']['updated']} updated; {skipped} skipped",
             f"upcoming matches: {upcoming} not_started, {with_picks} with picks "
-            f"(chalkbot made {cb['made']} new)",
+            f"(chalkbot +{cb['made']}, form +{ex.get('form', 0)}, h2h +{ex.get('h2h', 0)})",
             f"picks graded: {gr['graded']} (pending now: {gr['pending']}; total picks: {total_picks})",
             "agent_stats:",
         ]
