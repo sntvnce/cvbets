@@ -1,0 +1,12 @@
+# secrets — never commit
+.env
+
+# python
+__pycache__/
+.venv/
+
+# regenerable data layer (schema lives in schema.sql, log in data/daily.log)
+data/*.db
+data/*.db-shm
+data/*.db-wal
+data/daily.log
