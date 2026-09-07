@@ -1,0 +1,218 @@
+{
+ "title": "cvbets \u2014 What We Built",
+ "author": "Hermes Agent",
+ "elements": [
+  {
+   "type": "heading",
+   "text": "cvbets: an AI horse-race for CS2 predictions",
+   "level": 1
+  },
+  {
+   "type": "paragraph",
+   "text": "cvbets is a simulated prediction tracker for professional Counter-Strike 2 matches. Several AI 'tipsters' (we call them agents) predict who will win each upcoming match. Every night, the system checks real results and keeps score. Think of it as a season-long competition between tipsters, refereed by software nobody can argue with. Important: no real money anywhere \u2014 this is bragging rights and statistics only."
+  },
+  {
+   "type": "heading",
+   "text": "The daily loop (runs itself at midnight)",
+   "level": 2
+  },
+  {
+   "type": "paragraph",
+   "text": "Every night at 12:00am, an automated job runs four steps in order and posts a summary to our Discord channel:"
+  },
+  {
+   "type": "table",
+   "widths": [
+    108.5,
+    316.5
+   ],
+   "rows": [
+    [
+     "1. Ingest",
+     "Downloads today's upcoming CS2 matches and the last 60 days of results from PandaScore, a professional esports data provider."
+    ],
+    [
+     "2. Pick",
+     "Each agent that hasn't already spoken on a match locks in its prediction \u2014 with a confidence level \u2014 before the match starts. Picks are locked forever once made."
+    ],
+    [
+     "3. Grade",
+     "For every match that finished, each agent's pick is marked WIN or LOSS and given a Brier score \u2014 a fairness metric that punishes confidently wrong predictions more than humble ones."
+    ],
+    [
+     "4. Publish",
+     "The standings table, upcoming picks, and recent results are rebuilt into a public website and summarized on Discord."
+    ]
+   ]
+  },
+  {
+   "type": "heading",
+   "text": "The referees: three tipsters compete now, more can join anytime",
+   "level": 2
+  },
+  {
+   "type": "paragraph",
+   "text": "Every agent answers the same question \u2014 who wins this match, and how sure are you? \u2014 but each thinks differently:"
+  },
+  {
+   "type": "table",
+   "widths": [
+    67.1,
+    149.1,
+    208.8
+   ],
+   "rows": [
+    [
+     "chalkbot",
+     "The favorite-chaser",
+     "Checks each team's win rate over the last 30 days in our own database and backs the hotter team. If it doesn't know enough about a team, it picks team 1 at coin-flip confidence. The baseline everyone must beat."
+    ],
+    [
+     "form",
+     "The recency scout",
+     "Only looks at each team's last 5 matches, whoever the opponent. A team on a 4-1 run beats a team slumping at 1-4, even if the season stats disagree."
+    ],
+    [
+     "h2h",
+     "The history buff",
+     "Only cares about the all-time record between these two exact teams. Rivalries and style matchups matter more than current streaks. No history? Coin flip."
+    ]
+   ]
+  },
+  {
+   "type": "paragraph",
+   "text": "New agents \u2014 including LLM-powered ones that read the data and reason in plain language \u2014 can join later by submitting predictions through the same gate. Nobody gets special treatment."
+  },
+  {
+   "type": "heading",
+   "text": "The rules that keep it honest",
+   "level": 2
+  },
+  {
+   "type": "table",
+   "widths": [
+    162.8,
+    262.2
+   ],
+   "rows": [
+    [
+     "Append-only ledger",
+     "Once a prediction is written, it can never be edited or deleted \u2014 like writing in pen. The only allowed change is the referee stamping WIN or LOSS on it once, after the match. No rewriting history, no 'I meant to pick the other team'."
+    ],
+    [
+     "The gate",
+     "Agents cannot touch the database directly. Predictions go through a checkpoint that rejects anything malformed: wrong team name, confidence outside 50-100%, missing reasoning, more than 100 words, or a second prediction on the same match."
+    ],
+    [
+     "One pick per agent per match",
+     "Enforced at the gate and in the database. No hedging, no do-overs."
+    ],
+    [
+     "Timestamps everywhere",
+     "Every pick and every grade is timestamped, so the full story of who-knew-what-when is preserved."
+    ]
+   ]
+  },
+  {
+   "type": "heading",
+   "text": "How scoring works (the Brier score)",
+   "level": 2
+  },
+  {
+   "type": "paragraph",
+   "text": "A tipster doesn't just say a team name \u2014 it attaches a confidence from 0.50 (coin flip) to 1.00 (certain). The Brier score measures how well calibrated those confidences are: score = (confidence - outcome) squared, where a win counts as 1 and a loss as 0. Lower is better. Saying 80% and being right earns 0.04; saying 80% and being wrong costs 0.64. A perfect 0.00 means you were right every time with total confidence; 0.25 is what you earn by always guessing at exactly 50%. The point: agents can't win by being lucky and loud \u2014 they have to be right at the rate they claim."
+  },
+  {
+   "type": "heading",
+   "text": "Current standings",
+   "level": 2
+  },
+  {
+   "type": "paragraph",
+   "text": "As of this printing (nightly grading at 12:00am keeps moving these numbers):"
+  },
+  {
+   "type": "table",
+   "widths": [
+    99.5,
+    81.4,
+    81.4,
+    81.4,
+    81.4
+   ],
+   "rows": [
+    [
+     "Agent",
+     "Graded",
+     "W-L",
+     "Win rate",
+     "Brier"
+    ],
+    [
+     "chalkbot",
+     "44",
+     "26-18",
+     "59.1%",
+     "0.2500"
+    ],
+    [
+     "form",
+     "1",
+     "0-1",
+     "0.0%",
+     "0.2500"
+    ],
+    [
+     "h2h",
+     "1",
+     "0-1",
+     "0.0%",
+     "0.2500"
+    ]
+   ]
+  },
+  {
+   "type": "paragraph",
+   "text": "Scale so far: 2,588 matches tracked (2,502 finished, 86 upcoming), 304 predictions logged, 46 graded, 258 awaiting their matches. The new agents have each graded only one pick so far \u2014 their real records build up over the coming nights. chalkbot's 0.25 Brier is exactly what coin-flip confidence produces; as it now posts confidences up to 0.86, its Brier will either fall (good calibration) or rise (overconfidence exposed). That's the experiment."
+  },
+  {
+   "type": "heading",
+   "text": "Where it lives",
+   "level": 2
+  },
+  {
+   "type": "table",
+   "widths": [
+    162.8,
+    262.2
+   ],
+   "rows": [
+    [
+     "Public dashboard",
+     "https://sntvnce.github.io/cvbets/ \u2014 standings, upcoming picks, results"
+    ],
+    [
+     "Source code",
+     "https://github.com/sntvnce/cvbets \u2014 ~1,600 lines of Python, no frameworks"
+    ],
+    [
+     "Nightly report",
+     "Posted to the #guru-updates Discord channel after every midnight run"
+    ],
+    [
+     "Data",
+     "A single SQLite database (ledger.db) \u2014 the append-only source of truth"
+    ]
+   ]
+  },
+  {
+   "type": "heading",
+   "text": "What's next",
+   "level": 2
+  },
+  {
+   "type": "paragraph",
+   "text": "Three upgrades on the bench: (1) LLM expert agents that read the ledger and argue their picks in plain language, (2) a 'chief' agent that learns to weight the experts by their proven calibration and emits its own consensus picks, and (3) bookmaker odds, which unlock the real endgame \u2014 comparing every agent not just on accuracy but on whether its confidence would have made money against the market."
+  }
+ ]
+}

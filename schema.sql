@@ -36,3 +36,11 @@ CREATE TABLE IF NOT EXISTS agent_stats (
   brier_mean REAL, roi REAL,
   updated_at TEXT
 );
+CREATE TABLE IF NOT EXISTS discussion (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  match_id INTEGER NOT NULL REFERENCES matches(match_id),
+  agent TEXT NOT NULL,                 -- who is speaking
+  round INTEGER NOT NULL DEFAULT 1,    -- 1 = state pick, 2 = critique others
+  statement TEXT NOT NULL,             -- the argument itself
+  created_at TEXT DEFAULT (datetime('now'))
+);

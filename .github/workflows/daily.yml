@@ -56,6 +56,11 @@ jobs:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: python scripts/notify_discord.py
 
+      - name: Post debate stage to Discord
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: python scripts/debate_discord.py
+
       - name: Notify on failure
         if: failure()
         env:

@@ -10,6 +10,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent / "scripts"))
 
 import chalkbot
+import debate
 import experts
 import grade
 import ingest
@@ -26,6 +27,7 @@ def main():
         ing = ingest.run(conn)
         cb = chalkbot.run(conn)
         ex = experts.run(conn=conn)
+        db_ = debate.run(conn)
         gr = grade.run(conn)
 
         upcoming = conn.execute(
@@ -47,6 +49,7 @@ def main():
             f"upcoming matches: {upcoming} not_started, {with_picks} with picks "
             f"(chalkbot +{cb['made']}, form +{ex.get('form', 0)}, h2h +{ex.get('h2h', 0)})",
             f"picks graded: {gr['graded']} (pending now: {gr['pending']}; total picks: {total_picks})",
+            f"debate: {db_['critiques']} new critiques posted",
             "agent_stats:",
         ]
         if gr["stats"]:
