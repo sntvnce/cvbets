@@ -36,6 +36,9 @@ jobs:
       - name: Regenerate dashboard
         run: python scripts/generate_site.py
 
+      - name: Sync docs/ for GitHub Pages
+        run: cp site/index.html docs/index.html
+
       - name: Commit ledger + dashboard
         run: |
           git config user.name "cvbets-bot"
