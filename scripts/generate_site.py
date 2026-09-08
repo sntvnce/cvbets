@@ -496,6 +496,19 @@ CSS = """
   h4 { color:#8b949e; font-size:.78rem; text-transform:uppercase;
       margin:.2rem 0 .4rem; }
   .tagline { color:#8b949e; margin:0 0 1.5rem; font-size:.9rem; }
+  /* tab navigation */
+  nav.tabs { display:flex; gap:.3rem; flex-wrap:wrap; margin:0 0 1.6rem;
+            border-bottom:1px solid #21262d; padding-bottom:.6rem; }
+  nav.tabs button { background:#0d1117; color:#8b949e; border:1px solid #30363d;
+                   border-radius:6px; padding:.45rem .9rem; font-size:.88rem;
+                   cursor:pointer; }
+  nav.tabs button:hover { color:#e6edf3; background:#161b22; }
+  nav.tabs button.active { color:#e6edf3; background:#161b22;
+                          border-color:#58a6ff; font-weight:600; }
+  section.page { display:none; }
+  section.page.active { display:block; }
+  .nojs-tabnote { display:none; }
+  html.js .nojs-tabnote { display:block; }
   .stats { display:flex; gap:1rem; flex-wrap:wrap; margin-bottom:2rem; }
   .stat { background:#161b22; border:1px solid #30363d; border-radius:8px;
          padding:.8rem 1.2rem; min-width:9rem; }
@@ -779,8 +792,79 @@ JS = r"""
     return v.slice(0, 16).replace('T', ' ') + ' UTC';
   }
 
+  // ---- tab navigation ----------------------------------------------------
+  // Sections are server-rendered visible by default (no-JS readable). With JS,
+  // group them into pages and show one at a time. Selected tab persists via
+  // location.hash so links/refresh keep the view.
+  var TABS = [
+    { id: 'page-overview',  label: 'Overview',        default: true },
+    { id: 'page-picks',     label: 'Picks & Pending' },
+    { id: 'page-results',   label: 'Results' },
+    { id: 'page-teams',     label: 'Teams' },
+    { id: 'page-debate',    label: 'Debate' },
+    { id: 'page-calibration', label: 'Calibration' },
+  ];
+  function wireTabs() {
+    var nav = document.querySelector('nav.tabs');
+    if (!nav) return;
+    // move each h2 + its following content into its section
+    var body = nav.parentNode;
+    var sections = {};
+    TABS.forEach(function (t) {
+      var s = document.createElement('section');
+      s.className = 'page'; s.id = t.id;
+      body.insertBefore(s, nav.nextSibling);
+      body.insertBefore(document.createElement('br'), nav.nextSibling);
+      sections[t.id] = s;
+    });
+    // mapping: every h2 belongs to a page
+    var map = {
+      'Agent standings': 'page-overview',
+      'Upcoming picks': 'page-picks',
+      'Pending results': 'page-picks',
+      'Recent results': 'page-results',
+      'Team profiles': 'page-teams',
+    };
+    Array.prototype.slice.call(body.children).forEach(function (el) {
+      if (el === nav || el.tagName === 'SCRIPT' || el.tagName === 'SECTION') return;
+      if (el.tagName === 'H2') {
+        var label = el.textContent.replace(/^Debates — .*/, 'Debates')
+                                  .replace(/^Calibration — .*/, 'Calibration');
+        var page = map[el.textContent.trim()] ||
+                   (el.textContent.indexOf('Debate') === 0 ? 'page-debate' : null) ||
+                   (el.textContent.indexOf('Calibration') === 0 ? 'page-calibration' : null);
+        current = page ? sections[page] : current;
+      }
+      if (current) current.appendChild(el);
+    });
+    // buttons
+    TABS.forEach(function (t) {
+      var b = document.createElement('button');
+      b.textContent = t.label;
+      b.setAttribute('data-page', t.id);
+      if (t.default) b.classList.add('active');
+      b.addEventListener('click', function () { show(t.id); });
+      nav.appendChild(b);
+    });
+    function show(id) {
+      TABS.forEach(function (t) {
+        sections[t.id].classList.toggle('active', t.id === id);
+      });
+      Array.prototype.forEach.call(nav.children, function (b) {
+        b.classList.toggle('active', b.getAttribute('data-page') === id);
+      });
+      try { history.replaceState(null, '', '#' + id); } catch (e) {}
+      window.scrollTo(0, 0);
+    }
+    // restore from hash (#page-teams etc), minus the leading '#'
+    var initial = (location.hash || '').replace('#', '');
+    show(sections[initial] ? initial : 'page-overview');
+  }
+
   function init() {
+    document.documentElement.classList.add('js');
     enableControls();
+    wireTabs();
     $('table[data-sortable]').forEach(makeSortable);
     wireFilters();
     wireTeams();
@@ -834,6 +918,10 @@ Brier score. No real money. Generated {gen_ts}.</p>
   <div class="stat"><b>{t['awaiting_results']}</b>awaiting results</div>
   <div class="stat"><b>{t['teams']}</b>teams in play</div>
 </div>
+<nav class="tabs" aria-label="Dashboard sections"></nav>
+<p class="nojs-tabnote">All sections are listed on this page in order: Agent
+standings · Upcoming picks · Pending results · Recent results · Team profiles ·
+Debates · Calibration. (Enable JavaScript for tab navigation.)</p>
 <h2>Agent standings</h2>
 <span class="hint js-only">click a column to sort</span>
 <input class="filter js-only" type="search" placeholder="filter agents…"
