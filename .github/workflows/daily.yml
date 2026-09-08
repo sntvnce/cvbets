@@ -37,7 +37,9 @@ jobs:
         run: python scripts/generate_site.py
 
       - name: Sync docs/ for GitHub Pages
-        run: cp site/index.html docs/index.html
+        run: |
+          rm -f docs/*.html
+          cp site/*.html docs/
 
       - name: Commit ledger + dashboard
         run: |
