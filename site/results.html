@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Results — cvbets</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:2rem; background:#0d1117; color:#c9d1d9;
+        font:15px/1.5 -apple-system, "Segoe UI", Roboto, sans-serif; }
+  h1 { margin:0 0 .2rem; color:#e6edf3; font-size:1.6rem; }
+  h2 { color:#e6edf3; font-size:1.1rem; margin:2.2rem 0 .6rem;
+      border-bottom:1px solid #21262d; padding-bottom:.4rem; }
+  h4 { color:#8b949e; font-size:.78rem; text-transform:uppercase;
+      margin:.2rem 0 .4rem; }
+  .tagline { color:#8b949e; margin:0 0 1.5rem; font-size:.9rem; }
+  /* tab navigation */
+  nav.tabs { display:flex; gap:.3rem; flex-wrap:wrap; margin:0 0 1.6rem;
+            border-bottom:1px solid #21262d; padding-bottom:.6rem; }
+  nav.tabs a { background:#0d1117; color:#8b949e; border:1px solid #30363d;
+               border-radius:6px; padding:.45rem .9rem; font-size:.88rem;
+               text-decoration:none; display:inline-block; }
+  nav.tabs a:hover { color:#e6edf3; background:#161b22; }
+  nav.tabs a.active { color:#e6edf3; background:#161b22;
+                      border-color:#58a6ff; font-weight:600; }
+  section.page { display:none; }
+  section.page.active { display:block; }
+  .stats { display:flex; gap:1rem; flex-wrap:wrap; margin-bottom:2rem; }
+  .stat { background:#161b22; border:1px solid #30363d; border-radius:8px;
+         padding:.8rem 1.2rem; min-width:9rem; }
+  .stat b { display:block; font-size:1.4rem; color:#e6edf3; }
+  table { border-collapse:collapse; width:100%; margin-bottom:1rem; }
+  th, td { text-align:left; padding:.45rem .7rem; border-bottom:1px solid #21262d; }
+  th { color:#8b949e; font-weight:600; font-size:.8rem; text-transform:uppercase; }
+  tr:hover td { background:#161b22; }
+  .sub { display:block; color:#8b949e; font-size:.78rem; }
+  .pick { color:#58a6ff; font-weight:600; }
+  .win { color:#3fb950; font-weight:700; }
+  .loss { color:#f85149; font-weight:700; }
+  .empty { color:#8b949e; font-style:italic; }
+  .bar { display:inline-block; width:90px; height:8px; background:#21262d;
+        border-radius:4px; vertical-align:middle; margin-right:.4rem; }
+  .fill { height:8px; border-radius:4px; background:#58a6ff; }
+  .pct { color:#8b949e; font-size:.85rem; }
+  .adot { display:inline-block; width:9px; height:9px; border-radius:50%;
+         margin-right:.45rem; }
+  .badge { display:inline-block; font-size:.68rem; letter-spacing:.06em;
+          padding:.1rem .45rem; border:1px solid #30363d; border-radius:10px;
+          color:#8b949e; text-transform:uppercase; }
+  .badge.live { color:#f85149; border-color:#f85149; }
+  .pickpicks { max-width:34rem; font-size:.86rem; line-height:1.7; }
+  .summaryline { color:#8b949e; font-size:.86rem; margin:-.3rem 0 .8rem; }
+  .js-only { display:none; }
+  .js-on.js-only { display:inline-block; }
+  .filter { background:#0d1117; color:#c9d1d9; border:1px solid #30363d;
+           border-radius:6px; padding:.35rem .6rem; font-size:.85rem;
+           margin:0 .5rem .6rem 0; width:14rem; }
+  button.filter { width:auto; cursor:pointer; }
+  .hint { color:#8b949e; font-size:.78rem; margin-right:.8rem; }
+  th.sortable { cursor:pointer; user-select:none; }
+  th.sortable:hover { color:#c9d1d9; }
+  th.sortable::after { content:"\2195"; opacity:.4; margin-left:.3rem; font-size:.75rem; }
+  th.sorted-asc::after { content:"\2191"; opacity:1; }
+  th.sorted-desc::after { content:"\2193"; opacity:1; }
+  /* team cards */
+  .tcard { border:1px solid #21262d; border-radius:8px; margin-bottom:.45rem;
+          background:#0d1117; }
+  .tcard summary { display:flex; align-items:center; gap:1rem; cursor:pointer;
+                  padding:.5rem .8rem; list-style:none; flex-wrap:wrap; }
+  .tcard summary::-webkit-details-marker { display:none; }
+  .tcard summary:hover { background:#161b22; }
+  .tname { color:#e6edf3; font-weight:600; min-width:14rem; }
+  .tstat { color:#8b949e; font-size:.82rem; min-width:9rem; }
+  .spark polyline { fill:none; stroke:#58a6ff; stroke-width:1.5; }
+  .spark .dW { fill:#3fb950; } .spark .dL { fill:#f85149; }
+  .o { display:inline-block; width:1.2rem; font-weight:700; text-align:center; }
+  .ow { color:#3fb950; } .ol { color:#f85149; }
+  .tbody { display:flex; gap:2rem; padding:.4rem .8rem .8rem; flex-wrap:wrap;
+          border-top:1px solid #21262d; }
+  .tblock { min-width:16rem; }
+  table.mini { width:auto; font-size:.82rem; }
+  table.mini th, table.mini td { padding:.25rem .6rem; }
+  /* debate */
+  .dcard { border:1px solid #21262d; border-radius:8px; margin-bottom:1rem;
+          background:#0d1117; }
+  .dhead { padding:.6rem .8rem; background:#161b22; display:flex; gap:.8rem;
+          align-items:baseline; flex-wrap:wrap; }
+  .dhead b { color:#e6edf3; }
+  .pill { margin-left:auto; color:#8b949e; font-size:.75rem;
+         border:1px solid #30363d; border-radius:10px; padding:.05rem .5rem; }
+  .dwrap { padding:.5rem .8rem .8rem; }
+  .dbody { margin:.6rem 0; padding:.35rem .7rem; background:#161b22;
+          border-radius:6px; }
+  .ahead { display:flex; gap:.6rem; align-items:baseline; }
+  .pos { color:#8b949e; font-size:.82rem; }
+  .stmt { margin:.35rem 0 0; font-size:.88rem; }
+  .stmt.r1 { color:#e6edf3; }
+  .stmt.r2 { color:#c9d1d9; }
+  .stmt.none { color:#8b949e; font-style:italic; }
+  /* calibration */
+  .calgrid { display:flex; gap:1rem; flex-wrap:wrap; }
+  .calcard { background:#161b22; border:1px solid #30363d; border-radius:8px;
+            padding:.8rem 1rem; min-width:20rem; flex:1; }
+  .calrow { margin:.5rem 0; font-size:.85rem; }
+  .calrow .lbl { display:flex; justify-content:space-between;
+                flex-wrap:wrap; gap:.3rem; color:#8b949e; }
+  .cbar { height:8px; background:#21262d; border-radius:4px; margin-top:.2rem;
+         position:relative; }
+  .cbar > div { height:8px; border-radius:4px; position:absolute; top:0; }
+  .sparse { color:#8b949e; font-style:italic; }
+  footer { margin-top:3rem; color:#8b949e; font-size:.8rem;
+          border-top:1px solid #21262d; padding-top:1rem; }
+</style></head><body>
+<h1>cvbets</h1>
+<p class="tagline">Simulated CS2 prediction tracker — match-winner picks, scored by
+Brier score. No real money. Generated 2026-09-08 00:27 UTC.</p>
+<div class="stats">
+  <div class="stat"><b>2588</b>matches tracked</div>
+  <div class="stat"><b>346</b>picks logged</div>
+  <div class="stat"><b>46</b>graded</div>
+  <div class="stat"><b>300</b>pending picks</div>
+  <div class="stat"><b>86</b>awaiting results</div>
+  <div class="stat"><b>134</b>teams in play</div>
+</div>
+<nav class="tabs" aria-label="Dashboard sections"><a class="tab" href="index.html">Overview</a><a class="tab" href="picks.html">Picks & Pending</a><a class="tab active" href="results.html">Results</a><a class="tab" href="teams.html">Teams</a><a class="tab" href="debate.html">Debate</a><a class="tab" href="calibration.html">Calibration</a></nav>
+<h2>Recent results</h2>
+<span class="hint js-only">click a column to sort</span>
+<input class="filter js-only" type="search" placeholder="filter results…"
+       data-filter="t-results" aria-label="Filter recent results">
+<table id="t-results" data-sortable><thead><tr><th>Date</th><th>Agent</th><th>Match</th><th>Pick</th><th data-t="n">Conf</th><th>Score</th><th>Result</th><th data-t="n">Brier</th></tr></thead>
+<tbody><tr><td data-v="2026-09-07T18:36:33Z">2026-09-07 18:36 UTC</td><td><span class="adot" style="background:#d29922"></span>h2h</td><td>Reveal <b>vs</b> Playing Ducks</td><td class="pick">Reveal</td><td data-v="0.50">0.50</td><td>1-2</td><td class="loss" data-v="0">LOSS</td><td data-v="0.2500">0.2500</td></tr><tr><td data-v="2026-09-07T18:36:33Z">2026-09-07 18:36 UTC</td><td><span class="adot" style="background:#3fb950"></span>form</td><td>Reveal <b>vs</b> Playing Ducks</td><td class="pick">Reveal</td><td data-v="0.50">0.50</td><td>1-2</td><td class="loss" data-v="0">LOSS</td><td data-v="0.2500">0.2500</td></tr><tr><td data-v="2026-09-06T00:41:49Z">2026-09-06 00:41 UTC</td><td><span class="adot" style="background:#58a6ff"></span>chalkbot</td><td>regain <b>vs</b> NuTorious</td><td class="pick">regain</td><td data-v="0.50">0.50</td><td>2-1</td><td class="win" data-v="1">WIN</td><td data-v="0.2500">0.2500</td></tr><tr><td data-v="2026-09-06T01:32:21Z">2026-09-06 01:32 UTC</td><td><span class="adot" style="background:#58a6ff"></span>chalkbot</td><td>SportsBetExpert <b>vs</b> Iowa Stormboar</td><td class="pick">SportsBetExpert</td><td data-v="0.50">0.50</td><td>2-0</td><td class="win" data-v="1">WIN</td><td data-v="0.2500">0.2500</td></tr><tr><td data-v="2026-09-06T00:44:46Z">2026-09-06 00:44 UTC</td><td><span class="adot" style="background:#58a6ff"></span>chalkbot</td><td>Marsborne <b>vs</b> LAG Gaming</td><td class="pick">Marsborne</td><td data-v="0.50">0.50</td><td>2-0</td><td class="win" data-v="1">WIN</td><td data-v="0.2500">0.2500</td></tr><tr><td data-v="2026-09-05T23:41:23Z">2026-09-05 23:41 UTC</td><td><span class="adot" style="background:#58a6ff"></span>chalkbot</td><td>Overtake Sector <b>vs</b> Axial</td><td class="pick">Overtake Sector</td><td data-v="0.50">0.50</td><td>1-0</td><td class="win" data-v="1">WIN</td><td data-v="0.2500">0.2500</td></tr><tr><td data-v="2026-09-05T23:18:22Z">2026-09-05 23:18 UTC</td><td><span class="adot" style="background:#58a6ff"></span>chalkbot</td><td>Detonate <b>vs</b> FarmVille</td><td class="pick">Detonate</td><td data-v="0.50">0.50</td><td>1-0</td><td class="win" data-v="1">WIN</td><td data-v="0.2500">0.2500</td></tr><tr><td data-v="2026-09-05T23:10:31Z">2026-09-05 23:10 UTC</td><td><span class="adot" style="background:#58a6ff"></span>chalkbot</td><td>Without a Roof <b>vs</b> Beyond Limits</td><td class="pick">Without a Roof</td><td data-v="0.50">0.50</td><td>0-1</td><td class="loss" data-v="0">LOSS</td><td data-v="0.2500">0.2500</td></tr><tr><td data-v="2026-09-05T23:25:32Z">2026-09-05 23:25 UTC</td><td><span class="adot" style="background:#58a6ff"></span>chalkbot</td><td>Wanted Goons <b>vs</b> For Fun</td><td class="pick">Wanted Goons</td><td data-v="0.50">0.50</td><td>0-1</td><td class="loss" data-v="0">LOSS</td><td data-v="0.2500">0.2500</td></tr><tr><td data-v="2026-09-06T13:59:25Z">2026-09-06 13:59 UTC</td><td><span class="adot" style="background:#58a6ff"></span>chalkbot</td><td>Noir Verse <b>vs</b> Fire Flux Esports</td><td class="pick">Noir Verse</td><td data-v="0.50">0.50</td><td>2-1</td><td class="win" data-v="1">WIN</td><td data-v="0.2500">0.2500</td></tr><tr><td data-v="2026-09-06T13:57:09Z">2026-09-06 13:57 UTC</td><td><span class="adot" style="background:#58a6ff"></span>chalkbot</td><td>Strael-Bora <b>vs</b> megoshort</td><td class="pick">Strael-Bora</td><td data-v="0.50">0.50</td><td>1-2</td><td class="loss" data-v="0">LOSS</td><td data-v="0.2500">0.2500</td></tr><tr><td data-v="2026-09-06T11:11:07Z">2026-09-06 11:11 UTC</td><td><span class="adot" style="background:#58a6ff"></span>chalkbot</td><td>SAW Youngsters <b>vs</b> Misa Esports</td><td class="pick">SAW Youngsters</td><td data-v="0.50">0.50</td><td>1-2</td><td class="loss" data-v="0">LOSS</td><td data-v="0.2500">0.2500</td></tr><tr><td data-v="2026-09-05T13:48:06Z">2026-09-05 13:48 UTC</td><td><span class="adot" style="background:#58a6ff"></span>chalkbot</td><td>Inner Circle Academy <b>vs</b> Privateer Gaming</td><td class="pick">Inner Circle Academy</td><td data-v="0.50">0.50</td><td>2-1</td><td class="win" data-v="1">WIN</td><td data-v="0.2500">0.2500</td></tr><tr><td data-v="2026-09-06T11:09:39Z">2026-09-06 11:09 UTC</td><td><span class="adot" style="background:#58a6ff"></span>chalkbot</td><td>Mai Tai <b>vs</b> NAVI Junior</td><td class="pick">Mai Tai</td><td data-v="0.50">0.50</td><td>0-2</td><td class="loss" data-v="0">LOSS</td><td data-v="0.2500">0.2500</td></tr><tr><td data-v="2026-09-05T11:03:46Z">2026-09-05 11:03 UTC</td><td><span class="adot" style="background:#58a6ff"></span>chalkbot</td><td>Bushido Wildcats <b>vs</b> Spirit Academy</td><td class="pick">Bushido Wildcats</td><td data-v="0.50">0.50</td><td>2-0</td><td class="win" data-v="1">WIN</td><td data-v="0.2500">0.2500</td></tr><tr><td data-v="2026-09-05T17:45:09Z">2026-09-05 17:45 UTC</td><td><span class="adot" style="background:#58a6ff"></span>chalkbot</td><td>LPH Gaming <b>vs</b> Morrow Esports</td><td class="pick">LPH Gaming</td><td data-v="0.50">0.50</td><td>2-0</td><td class="win" data-v="1">WIN</td><td data-v="0.2500">0.2500</td></tr><tr><td data-v="2026-09-05T17:48:06Z">2026-09-05 17:48 UTC</td><td><span class="adot" style="background:#58a6ff"></span>chalkbot</td><td>eSuba <b>vs</b> ENRAGE</td><td class="pick">eSuba</td><td data-v="0.50">0.50</td><td>2-1</td><td class="win" data-v="1">WIN</td><td data-v="0.2500">0.2500</td></tr><tr><td data-v="2026-09-05T17:48:39Z">2026-09-05 17:48 UTC</td><td><span class="adot" style="background:#58a6ff"></span>chalkbot</td><td>OLDBOYS PL <b>vs</b> WBT Academy</td><td class="pick">OLDBOYS PL</td><td data-v="0.50">0.50</td><td>2-0</td><td class="win" data-v="1">WIN</td><td data-v="0.2500">0.2500</td></tr><tr><td data-v="2026-09-05T17:48:12Z">2026-09-05 17:48 UTC</td><td><span class="adot" style="background:#58a6ff"></span>chalkbot</td><td>NAVI Junior <b>vs</b> Banger Gang</td><td class="pick">NAVI Junior</td><td data-v="0.50">0.50</td><td>2-0</td><td class="win" data-v="1">WIN</td><td data-v="0.2500">0.2500</td></tr><tr><td data-v="2026-09-05T17:49:52Z">2026-09-05 17:49 UTC</td><td><span class="adot" style="background:#58a6ff"></span>chalkbot</td><td>Falcons Force <b>vs</b> ZOTIX</td><td class="pick">Falcons Force</td><td data-v="0.50">0.50</td><td>2-0</td><td class="win" data-v="1">WIN</td><td data-v="0.2500">0.2500</td></tr><tr><td data-v="2026-09-05T17:49:47Z">2026-09-05 17:49 UTC</td><td><span class="adot" style="background:#58a6ff"></span>chalkbot</td><td>XI Esport <b>vs</b> Esport BERG</td><td class="pick">XI Esport</td><td data-v="0.50">0.50</td><td>1-2</td><td class="loss" data-v="0">LOSS</td><td data-v="0.2500">0.2500</td></tr><tr><td data-v="2026-09-05T17:43:58Z">2026-09-05 17:43 UTC</td><td><span class="adot" style="background:#58a6ff"></span>chalkbot</td><td>KUUSAMO.gg <b>vs</b> Spirit Academy Green</td><td class="pick">KUUSAMO.gg</td><td data-v="0.50">0.50</td><td>0-2</td><td class="loss" data-v="0">LOSS</td><td data-v="0.2500">0.2500</td></tr><tr><td data-v="2026-09-05T15:21:57Z">2026-09-05 15:21 UTC</td><td><span class="adot" style="background:#58a6ff"></span>chalkbot</td><td>banda chuya <b>vs</b> Dark Moon</td><td class="pick">banda chuya</td><td data-v="0.50">0.50</td><td>0-2</td><td class="loss" data-v="0">LOSS</td><td data-v="0.2500">0.2500</td></tr><tr><td data-v="2026-09-05T16:16:59Z">2026-09-05 16:16 UTC</td><td><span class="adot" style="background:#58a6ff"></span>chalkbot</td><td>Fire Flux Esports <b>vs</b> BOJONG</td><td class="pick">Fire Flux Esports</td><td data-v="0.50">0.50</td><td>2-1</td><td class="win" data-v="1">WIN</td><td data-v="0.2500">0.2500</td></tr><tr><td data-v="2026-09-05T17:42:49Z">2026-09-05 17:42 UTC</td><td><span class="adot" style="background:#58a6ff"></span>chalkbot</td><td>NEXORA <b>vs</b> Drama eSports</td><td class="pick">NEXORA</td><td data-v="0.50">0.50</td><td>0-2</td><td class="loss" data-v="0">LOSS</td><td data-v="0.2500">0.2500</td></tr><tr><td data-v="2026-09-05T17:40:50Z">2026-09-05 17:40 UTC</td><td><span class="adot" style="background:#58a6ff"></span>chalkbot</td><td>Nemiga <b>vs</b> Team Nemesis</td><td class="pick">Nemiga</td><td data-v="0.50">0.50</td><td>2-0</td><td class="win" data-v="1">WIN</td><td data-v="0.2500">0.2500</td></tr><tr><td data-v="2026-09-05T12:12:57Z">2026-09-05 12:12 UTC</td><td><span class="adot" style="background:#58a6ff"></span>chalkbot</td><td>HOTU <b>vs</b> FOKUS</td><td class="pick">HOTU</td><td data-v="0.50">0.50</td><td>1-2</td><td class="loss" data-v="0">LOSS</td><td data-v="0.2500">0.2500</td></tr><tr><td data-v="2026-09-05T09:03:50Z">2026-09-05 09:03 UTC</td><td><span class="adot" style="background:#58a6ff"></span>chalkbot</td><td>fnatic <b>vs</b> BBL</td><td class="pick">fnatic</td><td data-v="0.50">0.50</td><td>2-1</td><td class="win" data-v="1">WIN</td><td data-v="0.2500">0.2500</td></tr><tr><td data-v="2026-09-05T15:13:50Z">2026-09-05 15:13 UTC</td><td><span class="adot" style="background:#58a6ff"></span>chalkbot</td><td>NIP <b>vs</b> Nuclear TigeRES</td><td class="pick">NIP</td><td data-v="0.50">0.50</td><td>2-0</td><td class="win" data-v="1">WIN</td><td data-v="0.2500">0.2500</td></tr><tr><td data-v="2026-09-07T18:36:33Z">2026-09-07 18:36 UTC</td><td><span class="adot" style="background:#58a6ff"></span>chalkbot</td><td>Reveal <b>vs</b> Playing Ducks</td><td class="pick">Reveal</td><td data-v="0.50">0.50</td><td>1-2</td><td class="loss" data-v="0">LOSS</td><td data-v="0.2500">0.2500</td></tr><tr><td data-v="2026-09-07T17:08:39Z">2026-09-07 17:08 UTC</td><td><span class="adot" style="background:#58a6ff"></span>chalkbot</td><td>BIG Academy <b>vs</b> BLUEJAYS.de</td><td class="pick">BIG Academy</td><td data-v="0.50">0.50</td><td>0-2</td><td class="loss" data-v="0">LOSS</td><td data-v="0.2500">0.2500</td></tr><tr><td data-v="2026-09-07T10:55:15Z">2026-09-07 10:55 UTC</td><td><span class="adot" style="background:#58a6ff"></span>chalkbot</td><td>BIG Academy <b>vs</b> Vexar</td><td class="pick">BIG Academy</td><td data-v="0.50">0.50</td><td>0-2</td><td class="loss" data-v="0">LOSS</td><td data-v="0.2500">0.2500</td></tr><tr><td data-v="2026-09-06T08:14:44Z">2026-09-06 08:14 UTC</td><td><span class="adot" style="background:#58a6ff"></span>chalkbot</td><td>megoshort <b>vs</b> train launcher</td><td class="pick">train launcher</td><td data-v="0.50">0.50</td><td>1-2</td><td class="win" data-v="1">WIN</td><td data-v="0.2500">0.2500</td></tr><tr><td data-v="2026-09-05T10:50:26Z">2026-09-05 10:50 UTC</td><td><span class="adot" style="background:#58a6ff"></span>chalkbot</td><td>Falcons Force <b>vs</b> Misa Esports</td><td class="pick">Falcons Force</td><td data-v="0.50">0.50</td><td>0-2</td><td class="loss" data-v="0">LOSS</td><td data-v="0.2500">0.2500</td></tr><tr><td data-v="2026-09-05T17:17:40Z">2026-09-05 17:17 UTC</td><td><span class="adot" style="background:#58a6ff"></span>chalkbot</td><td>INOX Division <b>vs</b> ex-Zero Tenacity</td><td class="pick">INOX Division</td><td data-v="0.50">0.50</td><td>2-1</td><td class="win" data-v="1">WIN</td><td data-v="0.2500">0.2500</td></tr><tr><td data-v="2026-09-05T14:32:41Z">2026-09-05 14:32 UTC</td><td><span class="adot" style="background:#58a6ff"></span>chalkbot</td><td>Lavked <b>vs</b> Just Players</td><td class="pick">Lavked</td><td data-v="0.50">0.50</td><td>2-1</td><td class="win" data-v="1">WIN</td><td data-v="0.2500">0.2500</td></tr><tr><td data-v="2026-09-05T11:08:25Z">2026-09-05 11:08 UTC</td><td><span class="adot" style="background:#58a6ff"></span>chalkbot</td><td>Leo Team <b>vs</b> PsychoFace</td><td class="pick">Leo Team</td><td data-v="0.50">0.50</td><td>2-1</td><td class="win" data-v="1">WIN</td><td data-v="0.2500">0.2500</td></tr><tr><td data-v="2026-09-05T08:03:20Z">2026-09-05 08:03 UTC</td><td><span class="adot" style="background:#58a6ff"></span>chalkbot</td><td>Esport Academy Copenhagen <b>vs</b> WRAITH PCIFIC</td><td class="pick">Esport Academy Copenhagen</td><td data-v="0.50">0.50</td><td>0-2</td><td class="loss" data-v="0">LOSS</td><td data-v="0.2500">0.2500</td></tr><tr><td data-v="2026-09-05T11:53:50Z">2026-09-05 11:53 UTC</td><td><span class="adot" style="background:#58a6ff"></span>chalkbot</td><td>Infinite <b>vs</b> QUAZAR</td><td class="pick">Infinite</td><td data-v="0.50">0.50</td><td>2-1</td><td class="win" data-v="1">WIN</td><td data-v="0.2500">0.2500</td></tr><tr><td data-v="2026-09-05T15:30:51Z">2026-09-05 15:30 UTC</td><td><span class="adot" style="background:#58a6ff"></span>chalkbot</td><td>9INE <b>vs</b> Metizport</td><td class="pick">9INE</td><td data-v="0.50">0.50</td><td>0-2</td><td class="loss" data-v="0">LOSS</td><td data-v="0.2500">0.2500</td></tr><tr><td data-v="2026-09-05T19:03:01Z">2026-09-05 19:03 UTC</td><td><span class="adot" style="background:#58a6ff"></span>chalkbot</td><td>Peladona <b>vs</b> Imperial</td><td class="pick">Peladona</td><td data-v="0.50">0.50</td><td>1-2</td><td class="loss" data-v="0">LOSS</td><td data-v="0.2500">0.2500</td></tr><tr><td data-v="2026-09-05T13:02:04Z">2026-09-05 13:02 UTC</td><td><span class="adot" style="background:#58a6ff"></span>chalkbot</td><td>Bounty Hunters Esports <b>vs</b> Yawara Esports</td><td class="pick">Bounty Hunters Esports</td><td data-v="0.50">0.50</td><td>2-0</td><td class="win" data-v="1">WIN</td><td data-v="0.2500">0.2500</td></tr><tr><td data-v="2026-09-05T16:00:08Z">2026-09-05 16:00 UTC</td><td><span class="adot" style="background:#58a6ff"></span>chalkbot</td><td>Procyon Gaming <b>vs</b> ALKA GAMING</td><td class="pick">Procyon Gaming</td><td data-v="0.50">0.50</td><td>0-2</td><td class="loss" data-v="0">LOSS</td><td data-v="0.2500">0.2500</td></tr><tr><td data-v="2026-09-05T22:24:05Z">2026-09-05 22:24 UTC</td><td><span class="adot" style="background:#58a6ff"></span>chalkbot</td><td>Galorys <b>vs</b> ODDIK</td><td class="pick">Galorys</td><td data-v="0.50">0.50</td><td>2-0</td><td class="win" data-v="1">WIN</td><td data-v="0.2500">0.2500</td></tr><tr><td data-v="2026-09-05T16:52:52Z">2026-09-05 16:52 UTC</td><td><span class="adot" style="background:#58a6ff"></span>chalkbot</td><td>MOUZ <b>vs</b> Vitality</td><td class="pick">MOUZ</td><td data-v="0.50">0.50</td><td>2-0</td><td class="win" data-v="1">WIN</td><td data-v="0.2500">0.2500</td></tr><tr><td data-v="2026-09-05T14:04:36Z">2026-09-05 14:04 UTC</td><td><span class="adot" style="background:#58a6ff"></span>chalkbot</td><td>Spirit <b>vs</b> Team Falcons</td><td class="pick">Spirit</td><td data-v="0.50">0.50</td><td>2-0</td><td class="win" data-v="1">WIN</td><td data-v="0.2500">0.2500</td></tr></tbody></table>
+<footer>cvbets — deterministic data layer + expert debate. Picks are append-only;
+only the grader writes results. Bets/ROI activate once an odds source exists.
+Data: 2588 matches, 346 picks (46 graded,
+300 pending) · 86 matches awaiting results, 300 pending picks, oldest 2.8 days · generated 2026-09-08 00:27.</footer>
+<script>
+(function () {
+  'use strict';
+
+  function $(sel, root) { return Array.prototype.slice.call(
+      (root || document).querySelectorAll(sel)); }
+
+  // Lazy access to the payload <script> (declared as `const DATA` later in the
+  // document — a lexical global, so it must be resolved lazily, not at parse).
+  function payload() {
+    try { return (typeof DATA === 'undefined') ? null : DATA; }
+    catch (e) { return null; }
+  }
+
+  // Reveal JS-only controls (filters, sort hints).
+  function enableControls() {
+    $('.js-only').forEach(function (el) { el.classList.add('js-on'); });
+  }
+
+  // ---- sortable tables --------------------------------------------------
+  function cellValue(td, kind) {
+    var v = td.getAttribute('data-v');
+    if (v === null || v === '') v = td.textContent.trim();
+    if (kind === 'n') { var f = parseFloat(v); return isNaN(f) ? -Infinity : f; }
+    return v.toLowerCase();
+  }
+  function makeSortable(table) {
+    var ths = $('th', table.tHead || table);
+    ths.forEach(function (th, i) {
+      th.classList.add('sortable');
+      var kind = th.getAttribute('data-t') === 'n' ? 'n' : 's';
+      th.addEventListener('click', function () {
+        var desc = th.classList.contains('sorted-asc');
+        ths.forEach(function (o) { o.classList.remove('sorted-asc', 'sorted-desc'); });
+        th.classList.add(desc ? 'sorted-desc' : 'sorted-asc');
+        var tbody = table.tBodies[0];
+        var keyed = $('tr', tbody).map(function (tr, idx) {
+          var td = tr.children[i];
+          return { tr: tr, idx: idx, v: td ? cellValue(td, kind) : '' };
+        });
+        keyed.sort(function (a, b) {
+          var c;
+          if (kind === 'n') c = a.v - b.v;
+          else c = a.v < b.v ? -1 : (a.v > b.v ? 1 : 0);
+          if (c === 0) c = a.idx - b.idx;
+          return desc ? -c : c;
+        });
+        keyed.forEach(function (k) { tbody.appendChild(k.tr); });
+      });
+    });
+  }
+
+  // ---- row filters ------------------------------------------------------
+  function wireFilters() {
+    $('input[data-filter]').forEach(function (inp) {
+      var table = document.getElementById(inp.getAttribute('data-filter'));
+      if (!table) return;
+      inp.addEventListener('input', function () {
+        var q = inp.value.trim().toLowerCase();
+        $('tr', table.tBodies[0]).forEach(function (tr) {
+          tr.hidden = q !== '' &&
+            tr.textContent.toLowerCase().indexOf(q) === -1;
+        });
+      });
+    });
+  }
+
+  // ---- team profile enhancements ---------------------------------------
+  function wireTeams() {
+    var search = document.getElementById('teamsearch');
+    var cards = $('.tcard');
+    if (search) {
+      search.addEventListener('input', function () {
+        var q = search.value.trim().toLowerCase();
+        cards.forEach(function (c) {
+          c.hidden = q !== '' &&
+            (c.getAttribute('data-team') || '').indexOf(q) === -1;
+        });
+      });
+    }
+    var ex = document.getElementById('texpand'),
+        co = document.getElementById('tcollapse');
+    if (ex) ex.addEventListener('click', function () {
+      cards.forEach(function (c) { c.open = true; });
+    });
+    if (co) co.addEventListener('click', function () {
+      cards.forEach(function (c) { c.open = false; });
+    });
+  }
+
+  // ---- calibration view (rendered from DATA) ---------------------------
+  function pctf(x) {
+    return (x === null || x === undefined) ? '—' : Math.round(x * 100) + '%';
+  }
+  function renderCalibration() {
+    var host = document.getElementById('calib');
+    var fallback = document.getElementById('calib-static');
+    var DATA = payload();
+    if (!host || !DATA || !DATA.calibration) return;
+    var html = '<div class="calgrid">';
+    Object.keys(DATA.calibration).forEach(function (agent) {
+      var color = (DATA.agents && DATA.agents[agent]) || '#8b949e';
+      html += '<div class="calcard"><h4 style="color:' + color + '">' +
+              esc(agent) + '</h4>';
+      DATA.calibration[agent].forEach(function (b) {
+        if (b.n === 0) {
+          html += '<div class="calrow"><div class="lbl"><span>' + b.label +
+                  '</span><span class="sparse">no graded picks</span></div></div>';
+        } else if (!b.sufficient) {
+          html += '<div class="calrow"><div class="lbl"><span>' + b.label +
+                  '</span><span class="sparse">insufficient data (n=' + b.n +
+                  ', need 5)</span></div>' +
+                  '<div class="cbar"><div style="width:' +
+                  Math.round((b.mean_conf || 0) * 100) +
+                  '%;background:#30363d"></div></div></div>';
+        } else {
+          html += '<div class="calrow"><div class="lbl"><span>' + b.label +
+                  '</span><span>actual ' + pctf(b.actual) + ' vs expected ' +
+                  pctf(b.mean_conf) + ' · n=' + b.n + '</span></div>' +
+                  '<div class="cbar"><div style="width:' +
+                  Math.round((b.mean_conf || 0) * 100) +
+                  '%;background:#30363d"></div>' +
+                  '<div style="width:' + Math.round(b.actual * 100) +
+                  '%;background:' + color +
+                  ';opacity:.85;top:2px;height:4px"></div></div></div>';
+        }
+      });
+      html += '</div>';
+    });
+    html += '</div>';
+    host.innerHTML = html;
+    host.hidden = false;
+    if (fallback) fallback.hidden = true;
+  }
+
+  // ---- debate view (rendered from DATA) ---------------------------------
+  function renderDebate() {
+    var host = document.getElementById('debate');
+    var fallback = document.getElementById('debate-static');
+    var DATA = payload();
+    if (!host || !DATA || !DATA.discussion) return;
+    var html = '';
+    DATA.discussion.forEach(function (m) {
+      var byAgent = {};
+      m.statements.forEach(function (s) {
+        (byAgent[s.agent] = byAgent[s.agent] || []).push(s);
+      });
+      m.picks.forEach(function (p) {
+        byAgent[p.agent] = byAgent[p.agent] || [];
+      });
+      var body = Object.keys(byAgent).sort().map(function (a) {
+        var color = (DATA.agents && DATA.agents[a]) || '#8b949e';
+        var pick = m.picks.filter(function (p) { return p.agent === a; })[0];
+        var pos = pick ? esc(pick.selection) + ' @ ' +
+                  pick.confidence.toFixed(2) : '—';
+        var r1 = byAgent[a].filter(function (s) { return s.round === 1; });
+        var r2 = byAgent[a].filter(function (s) { return s.round === 2; });
+        var r1h = r1.length
+          ? r1.map(function (s) {
+              return '<p class="stmt r1">' + esc(s.statement) + '</p>';
+            }).join('')
+          : '<p class="stmt none">No round-1 statement recorded.</p>';
+        var r2h = r2.length
+          ? r2.map(function (s) {
+              return '<p class="stmt r2">' + esc(s.statement) + '</p>';
+            }).join('')
+          : '<p class="stmt none">No round-2 critique recorded.</p>';
+        return '<div class="dbody" style="border-left:3px solid ' + color + '">' +
+               '<div class="ahead"><span class="adot" style="background:' + color +
+               '"></span><b>' + esc(a) + '</b><span class="pos">position: ' + pos +
+               '</span></div>' + r1h + r2h + '</div>';
+      }).join('');
+      html += '<div class="dcard"><div class="dhead"><b>' + esc(m.team1) + ' vs ' +
+              esc(m.team2) + '</b><span class="sub">' + esc(fmtDay(m.begin_at)) +
+              ' · ' + esc(m.format || '—') + ' · ' + esc(m.league || '—') +
+              '</span><span class="pill">' + m.n_statements +
+              ' statements</span></div>' +
+              '<div class="dwrap">' + body + '</div></div>';
+    });
+    if (!html) html = '<p class="empty">No discussion recorded for upcoming matches.</p>';
+    host.innerHTML = html;
+    host.hidden = false;
+    if (fallback) fallback.hidden = true;
+  }
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;',
+               '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function fmtDay(v) {
+    if (!v) return '—';
+    return v.slice(0, 16).replace('T', ' ') + ' UTC';
+  }
+
+  function init() {
+    enableControls();
+    $('table[data-sortable]').forEach(makeSortable);
+    wireFilters();
+    wireTeams();
+    renderCalibration();
+    renderDebate();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>
+
+</body></html>

@@ -499,16 +499,14 @@ CSS = """
   /* tab navigation */
   nav.tabs { display:flex; gap:.3rem; flex-wrap:wrap; margin:0 0 1.6rem;
             border-bottom:1px solid #21262d; padding-bottom:.6rem; }
-  nav.tabs button { background:#0d1117; color:#8b949e; border:1px solid #30363d;
-                   border-radius:6px; padding:.45rem .9rem; font-size:.88rem;
-                   cursor:pointer; }
-  nav.tabs button:hover { color:#e6edf3; background:#161b22; }
-  nav.tabs button.active { color:#e6edf3; background:#161b22;
-                          border-color:#58a6ff; font-weight:600; }
+  nav.tabs a { background:#0d1117; color:#8b949e; border:1px solid #30363d;
+               border-radius:6px; padding:.45rem .9rem; font-size:.88rem;
+               text-decoration:none; display:inline-block; }
+  nav.tabs a:hover { color:#e6edf3; background:#161b22; }
+  nav.tabs a.active { color:#e6edf3; background:#161b22;
+                      border-color:#58a6ff; font-weight:600; }
   section.page { display:none; }
   section.page.active { display:block; }
-  .nojs-tabnote { display:none; }
-  html.js .nojs-tabnote { display:block; }
   .stats { display:flex; gap:1rem; flex-wrap:wrap; margin-bottom:2rem; }
   .stat { background:#161b22; border:1px solid #30363d; border-radius:8px;
          padding:.8rem 1.2rem; min-width:9rem; }
@@ -792,79 +790,8 @@ JS = r"""
     return v.slice(0, 16).replace('T', ' ') + ' UTC';
   }
 
-  // ---- tab navigation ----------------------------------------------------
-  // Sections are server-rendered visible by default (no-JS readable). With JS,
-  // group them into pages and show one at a time. Selected tab persists via
-  // location.hash so links/refresh keep the view.
-  var TABS = [
-    { id: 'page-overview',  label: 'Overview',        default: true },
-    { id: 'page-picks',     label: 'Picks & Pending' },
-    { id: 'page-results',   label: 'Results' },
-    { id: 'page-teams',     label: 'Teams' },
-    { id: 'page-debate',    label: 'Debate' },
-    { id: 'page-calibration', label: 'Calibration' },
-  ];
-  function wireTabs() {
-    var nav = document.querySelector('nav.tabs');
-    if (!nav) return;
-    // move each h2 + its following content into its section
-    var body = nav.parentNode;
-    var sections = {};
-    TABS.forEach(function (t) {
-      var s = document.createElement('section');
-      s.className = 'page'; s.id = t.id;
-      body.insertBefore(s, nav.nextSibling);
-      body.insertBefore(document.createElement('br'), nav.nextSibling);
-      sections[t.id] = s;
-    });
-    // mapping: every h2 belongs to a page
-    var map = {
-      'Agent standings': 'page-overview',
-      'Upcoming picks': 'page-picks',
-      'Pending results': 'page-picks',
-      'Recent results': 'page-results',
-      'Team profiles': 'page-teams',
-    };
-    Array.prototype.slice.call(body.children).forEach(function (el) {
-      if (el === nav || el.tagName === 'SCRIPT' || el.tagName === 'SECTION') return;
-      if (el.tagName === 'H2') {
-        var label = el.textContent.replace(/^Debates — .*/, 'Debates')
-                                  .replace(/^Calibration — .*/, 'Calibration');
-        var page = map[el.textContent.trim()] ||
-                   (el.textContent.indexOf('Debate') === 0 ? 'page-debate' : null) ||
-                   (el.textContent.indexOf('Calibration') === 0 ? 'page-calibration' : null);
-        current = page ? sections[page] : current;
-      }
-      if (current) current.appendChild(el);
-    });
-    // buttons
-    TABS.forEach(function (t) {
-      var b = document.createElement('button');
-      b.textContent = t.label;
-      b.setAttribute('data-page', t.id);
-      if (t.default) b.classList.add('active');
-      b.addEventListener('click', function () { show(t.id); });
-      nav.appendChild(b);
-    });
-    function show(id) {
-      TABS.forEach(function (t) {
-        sections[t.id].classList.toggle('active', t.id === id);
-      });
-      Array.prototype.forEach.call(nav.children, function (b) {
-        b.classList.toggle('active', b.getAttribute('data-page') === id);
-      });
-      try { history.replaceState(null, '', '#' + id); } catch (e) {}
-      window.scrollTo(0, 0);
-    }
-    // restore from hash (#page-teams etc), minus the leading '#'
-    var initial = (location.hash || '').replace('#', '');
-    show(sections[initial] ? initial : 'page-overview');
-  }
-
   function init() {
-    document.documentElement.classList.add('js');
     enableControls();
-    wireTabs();
     $('table[data-sortable]').forEach(makeSortable);
     wireFilters();
     wireTeams();
@@ -894,94 +821,70 @@ def json_script(data):
     return f"<script>const DATA = {payload};</script>"
 
 
-def render(data, s_rows, u_rows, p_rows, r_rows, t_cards, d_cards, c_static):
-    t = data["totals"]
-    m = data["meta"]
-    gen_ts = data["generated"]
-    oldest = m["oldest_pending_days"]
-    oldest_s = f"{oldest:.1f} days" if oldest is not None else "n/a"
-    summary = (f'{t["awaiting_results"]} matches awaiting results, '
-               f'{t["pending_picks"]} pending picks, oldest {oldest_s}')
+def _page_shell(title, body, gen_ts, totals, summary, active, gen_ts_short, data):
+    """One real HTML page of the multi-page site. Navigation is plain <a>
+    links — works with JS disabled, real URLs on GitHub Pages."""
+    tabs = [
+        ("index.html", "Overview", "index"),
+        ("picks.html", "Picks & Pending", "picks"),
+        ("results.html", "Results", "results"),
+        ("teams.html", "Teams", "teams"),
+        ("debate.html", "Debate", "debate"),
+        ("calibration.html", "Calibration", "calibration"),
+    ]
+    nav = "".join(
+        f'<a class="tab{" active" if key == active else ""}" href="{href}">{label}</a>'
+        for href, label, key in tabs
+    )
+    stats = f"""<div class="stats">
+  <div class="stat"><b>{totals['matches']}</b>matches tracked</div>
+  <div class="stat"><b>{totals['picks']}</b>picks logged</div>
+  <div class="stat"><b>{totals['graded']}</b>graded</div>
+  <div class="stat"><b>{totals['pending_picks']}</b>pending picks</div>
+  <div class="stat"><b>{totals['awaiting_results']}</b>awaiting results</div>
+  <div class="stat"><b>{totals['teams']}</b>teams in play</div>
+</div>"""
     return f"""<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>cvbets — CS2 prediction tracker</title>
+<title>{title} — cvbets</title>
 <style>{CSS}</style></head><body>
 <h1>cvbets</h1>
 <p class="tagline">Simulated CS2 prediction tracker — match-winner picks, scored by
 Brier score. No real money. Generated {gen_ts}.</p>
-<div class="stats">
-  <div class="stat"><b>{t['matches']}</b>matches tracked</div>
-  <div class="stat"><b>{t['picks']}</b>picks logged</div>
-  <div class="stat"><b>{t['graded']}</b>graded</div>
-  <div class="stat"><b>{t['pending_picks']}</b>pending picks</div>
-  <div class="stat"><b>{t['awaiting_results']}</b>awaiting results</div>
-  <div class="stat"><b>{t['teams']}</b>teams in play</div>
-</div>
-<nav class="tabs" aria-label="Dashboard sections"></nav>
-<p class="nojs-tabnote">All sections are listed on this page in order: Agent
-standings · Upcoming picks · Pending results · Recent results · Team profiles ·
-Debates · Calibration. (Enable JavaScript for tab navigation.)</p>
-<h2>Agent standings</h2>
-<span class="hint js-only">click a column to sort</span>
-<input class="filter js-only" type="search" placeholder="filter agents…"
-       data-filter="t-standings" aria-label="Filter standings">
-<table id="t-standings" data-sortable><thead><tr><th>Agent</th><th data-t="n">Picks</th><th data-t="n">W–L</th><th data-t="n">Win %</th><th data-t="n">Mean Brier</th><th>ROI</th></tr></thead>
-<tbody>{s_rows}</tbody></table>
-<h2>Upcoming picks</h2>
-<span class="hint js-only">click a column to sort</span>
-<input class="filter js-only" type="search" placeholder="filter picks…"
-       data-filter="t-upcoming" aria-label="Filter upcoming picks">
-<table id="t-upcoming" data-sortable><thead><tr><th>Kickoff</th><th>Event</th><th>Match</th><th>Pick</th><th>Confidence</th><th>Agent</th></tr></thead>
-<tbody>{u_rows}</tbody></table>
-<h2>Pending results</h2>
-<p class="summaryline">{summary}</p>
-<p class="hint">Matches with picks awaiting a grade. LIVE = in progress now;
-upcoming = not started yet.</p>
-<span class="hint js-only">click a column to sort</span>
-<input class="filter js-only" type="search" placeholder="filter matches…"
-       data-filter="t-pending" aria-label="Filter pending results">
-<table id="t-pending" data-sortable><thead><tr><th>Kickoff</th><th>Status</th><th>Match</th><th>Picks (agent: selection @ conf)</th><th data-t="n">Oldest pick</th><th data-t="n">Picks</th></tr></thead>
-<tbody>{p_rows}</tbody></table>
-<h2>Recent results</h2>
-<span class="hint js-only">click a column to sort</span>
-<input class="filter js-only" type="search" placeholder="filter results…"
-       data-filter="t-results" aria-label="Filter recent results">
-<table id="t-results" data-sortable><thead><tr><th>Date</th><th>Agent</th><th>Match</th><th>Pick</th><th data-t="n">Conf</th><th>Score</th><th>Result</th><th data-t="n">Brier</th></tr></thead>
-<tbody>{r_rows}</tbody></table>
-<h2>Team profiles</h2>
-<p class="hint">Teams appearing in upcoming picks. Form from all finished matches
-in the ledger (matches without a kickoff time are excluded from form windows).</p>
-<span class="js-only"><input class="filter" type="search" id="teamsearch"
-       placeholder="search teams…" aria-label="Search teams">
-<button class="filter" id="texpand" type="button">Expand all</button>
-<button class="filter" id="tcollapse" type="button">Collapse all</button></span>
-<p class="summaryline">{len(data['teams'])} teams · click a card for match-by-match detail</p>
-<div>{t_cards}</div>
-<h2>Debates — top {len(data['discussion'])} most-discussed upcoming matches</h2>
-<p class="hint">Round-1 positions and round-2 cross-examination from the
-append-only discussion table. Where no round-1 statement was recorded, the
-agent's locked pick is shown as its position.</p>
-<div id="debate" hidden></div>
-<div id="debate-static">{d_cards}</div>
-<h2>Calibration — graded picks by confidence bucket</h2>
-<p class="hint">Actual win rate vs bucket mean confidence. Buckets with fewer
-than {m.get('min_bucket_n', 5)} graded picks are marked insufficient data.</p>
-<div id="calib" hidden></div>
-<div id="calib-static">{c_static}</div>
+{stats}
+<nav class="tabs" aria-label="Dashboard sections">{nav}</nav>
+{body}
 <footer>cvbets — deterministic data layer + expert debate. Picks are append-only;
 only the grader writes results. Bets/ROI activate once an odds source exists.
-Data: {t['matches']} matches, {t['picks']} picks ({t['graded']} graded,
-{t['pending_picks']} pending) · {summary}.</footer>
+Data: {totals['matches']} matches, {totals['picks']} picks ({totals['graded']} graded,
+{totals['pending_picks']} pending) · {summary} · generated {gen_ts_short}.</footer>
 <script>{JS}</script>
-{json_script(data)}
+{json_script(data) if ACTIVE_PAGE_EMBEDS_DATA.get(active, False) else ''}
 </body></html>"""
 
+
+# which pages embed the full JSON payload (only those using JS-enhanced views)
+ACTIVE_PAGE_EMBEDS_DATA = {"index": True, "picks": False, "results": False,
+                           "teams": True, "debate": True, "calibration": True}
+
+
+def _section(html):
+    return html
 
 def main():
     conn = connect()
     data, ctx = fetch_data(conn)
     conn.close()
+
+    t = data["totals"]
+    m = data["meta"]
+    gen_ts = data["generated"]
+    gen_ts_short = gen_ts[:16]
+    oldest = m["oldest_pending_days"]
+    oldest_s = f"{oldest:.1f} days" if oldest is not None else "n/a"
+    summary = (f'{t["awaiting_results"]} matches awaiting results, '
+               f'{t["pending_picks"]} pending picks, oldest {oldest_s}')
 
     s_rows = standings_rows(ctx["standings"])
     u_rows = upcoming_rows(ctx["upcoming"])
@@ -991,17 +894,101 @@ def main():
     d_cards = debate_static(data["discussion"])
     c_static = calibration_static(data["calibration"])
 
-    page = render(data, s_rows, u_rows, p_rows, r_rows, t_cards, d_cards, c_static)
+    sort_hint = '<span class="hint js-only">click a column to sort</span>'
+
+    pages = {}
+
+    # ---- overview: standings + totals ----
+    pages["index.html"] = _page_shell(
+        "Overview",
+        f"""<h2>Agent standings</h2>
+{sort_hint}
+<input class="filter js-only" type="search" placeholder="filter agents…"
+       data-filter="t-standings" aria-label="Filter standings">
+<table id="t-standings" data-sortable><thead><tr><th>Agent</th><th data-t="n">Picks</th><th data-t="n">W–L</th><th data-t="n">Win %</th><th data-t="n">Mean Brier</th><th>ROI</th></tr></thead>
+<tbody>{s_rows}</tbody></table>
+<h2>Calibration — graded picks by confidence bucket</h2>
+<p class="hint">Actual win rate vs bucket mean confidence. Buckets with fewer
+than {m.get('min_bucket_n', 5)} graded picks are marked insufficient data.</p>
+<div id="calib" hidden></div>
+<div id="calib-static">{c_static}</div>""",
+        gen_ts, t, summary, "index", gen_ts_short, data)
+
+    # ---- picks & pending ----
+    pages["picks.html"] = _page_shell(
+        "Picks & Pending",
+        f"""<h2>Upcoming picks</h2>
+{sort_hint}
+<input class="filter js-only" type="search" placeholder="filter picks…"
+       data-filter="t-upcoming" aria-label="Filter upcoming picks">
+<table id="t-upcoming" data-sortable><thead><tr><th>Kickoff</th><th>Event</th><th>Match</th><th>Pick</th><th>Confidence</th><th>Agent</th></tr></thead>
+<tbody>{u_rows}</tbody></table>
+<h2>Pending results</h2>
+<p class="summaryline">{summary}</p>
+<p class="hint">Matches with picks awaiting a grade. LIVE = in progress now;
+upcoming = not started yet.</p>
+{sort_hint}
+<input class="filter js-only" type="search" placeholder="filter matches…"
+       data-filter="t-pending" aria-label="Filter pending results">
+<table id="t-pending" data-sortable><thead><tr><th>Kickoff</th><th>Status</th><th>Match</th><th>Picks (agent: selection @ conf)</th><th data-t="n">Oldest pick</th><th data-t="n">Picks</th></tr></thead>
+<tbody>{p_rows}</tbody></table>""",
+        gen_ts, t, summary, "picks", gen_ts_short, data)
+
+    # ---- results ----
+    pages["results.html"] = _page_shell(
+        "Results",
+        f"""<h2>Recent results</h2>
+{sort_hint}
+<input class="filter js-only" type="search" placeholder="filter results…"
+       data-filter="t-results" aria-label="Filter recent results">
+<table id="t-results" data-sortable><thead><tr><th>Date</th><th>Agent</th><th>Match</th><th>Pick</th><th data-t="n">Conf</th><th>Score</th><th>Result</th><th data-t="n">Brier</th></tr></thead>
+<tbody>{r_rows}</tbody></table>""",
+        gen_ts, t, summary, "results", gen_ts_short, data)
+
+    # ---- teams ----
+    pages["teams.html"] = _page_shell(
+        "Teams",
+        f"""<h2>Team profiles</h2>
+<p class="hint">Teams appearing in upcoming picks. Form from all finished matches
+in the ledger (matches without a kickoff time are excluded from form windows).</p>
+<span class="js-only"><input class="filter" type="search" id="teamsearch"
+       placeholder="search teams…" aria-label="Search teams">
+<button class="filter" id="texpand" type="button">Expand all</button>
+<button class="filter" id="tcollapse" type="button">Collapse all</button></span>
+<p class="summaryline">{len(data['teams'])} teams · click a card for match-by-match detail</p>
+<div>{t_cards}</div>""",
+        gen_ts, t, summary, "teams", gen_ts_short, data)
+
+    # ---- debate ----
+    pages["debate.html"] = _page_shell(
+        "Debate",
+        f"""<h2>Debates — top {len(data['discussion'])} most-discussed upcoming matches</h2>
+<p class="hint">Round-1 positions and round-2 cross-examination from the
+append-only discussion table. Where no round-1 statement was recorded, the
+agent's locked pick is shown as its position.</p>
+<div id="debate" hidden></div>
+<div id="debate-static">{d_cards}</div>""",
+        gen_ts, t, summary, "debate", gen_ts_short, data)
+
+    # ---- calibration ----
+    pages["calibration.html"] = _page_shell(
+        "Calibration",
+        f"""<h2>Calibration — graded picks by confidence bucket</h2>
+<p class="hint">Actual win rate vs bucket mean confidence. Buckets with fewer
+than {m.get('min_bucket_n', 5)} graded picks are marked insufficient data.</p>
+<div id="calib" hidden></div>
+<div id="calib-static">{c_static}</div>""",
+        gen_ts, t, summary, "calibration", gen_ts_short, data)
+
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text(page)
-    m = data["meta"]
-    print(f"wrote {OUT} ({len(page):,} bytes) — "
-          f"{m['upcoming_rows']} upcoming pick rows, "
+    for fname, html in pages.items():
+        (OUT.parent / fname).write_text(html)
+        print(f"wrote {OUT.parent / fname} ({len(html):,} bytes)")
+    print(f"totals: {m['upcoming_rows']} upcoming pick rows, "
           f"{m['pending_matches']} pending matches / {m['pending_picks']} pending picks, "
           f"{m['results_rows']} results, {m['teams']} team profiles, "
           f"{m['debate_matches']} debates ({m['debate_statements']} statements, "
-          f"{m['round1_statements']} round-1), "
-          f"{len(data['calibration'])} calibration agents")
+          f"{m['round1_statements']} round-1), {len(data['calibration'])} calibration agents")
 
 
 if __name__ == "__main__":

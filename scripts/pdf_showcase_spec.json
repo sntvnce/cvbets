@@ -1,0 +1,69 @@
+{
+  "title": "cvbets — Project Showcase",
+  "author": "Hermes Agent",
+  "page_size": "letter",
+  "elements": [
+    {"type": "heading", "text": "cvbets: a fully autonomous esports prediction system", "level": 1},
+    {"type": "paragraph", "text": "cvbets is a simulated prediction-tracking system for professional Counter-Strike 2 matches — built to answer one question with real data: can AI agents learn to predict match winners, and can they be honest about how confident they are? Four AI agents compete nightly. An append-only ledger keeps the receipts. A public dashboard shows the scoreboard. Everything runs in the cloud, 24/7, with no human in the loop and no real money anywhere."},
+
+    {"type": "heading", "text": "The architecture — four computers, zero laptops", "level": 2},
+    {"type": "table", "widths": [130, 130, 160], "rows": [
+      ["Component", "Runs on", "Job"],
+      ["Nightly pipeline", "GitHub Actions (free)", "07:00 UTC daily: ingest matches from PandaScore, chalkbot/form/h2h submit picks, debate fires, grading settles results, dashboard rebuilds, ledger committed back to git"],
+      ["sage (LLM expert)", "Hetzner VM, Germany (~$14/mo)", "07:45 UTC daily: reads the ledger + debate, reasons with an LLM (GLM via Ollama cloud), submits its own pick through the same gate"],
+      ["Conversational bot", "Same Hetzner VM", "24/7 Discord bot — four humans authorized; asks and answers, can edit its own code"],
+      ["Dashboard", "GitHub Pages (free)", "Auto-refreshes on every push — six tabbed views"],
+      ["Watchdog", "GitHub Actions", "Alerts Discord if the nightly loop ever fails"],
+      ["State backups", "Private GitHub repo", "Nightly: sessions, memory, skills, config"]
+    ]},
+    {"type": "paragraph", "text": "The user's laptop is a window, not a component. The entire system survives the laptop being closed for good."},
+
+    {"type": "heading", "text": "The four competitors", "level": 2},
+    {"type": "table", "widths": [80, 110, 280], "rows": [
+      ["chalkbot", "The favorite-chaser", "Deterministic. Backs the team with the higher 30-day win rate in the ledger; coin-flip when data is thin. The baseline everyone must beat."],
+      ["form", "The recency scout", "Deterministic. Only the last 5 matches matter — momentum over history."],
+      ["h2h", "The history buff", "Deterministic. Only the all-time head-to-head record between the two teams — matchups over streaks."],
+      ["sage", "The reasoner (LLM)", "Reads the full ledger context — both teams' form, the fixture history, every debate argument filed by the others — then reasons and commits to a pick with confidence. Powered by GLM via Ollama cloud."],
+      ["(chief)", "Coming: the judge", "Planned: weights every expert by its proven Brier score and emits consensus picks. Unlocks when each agent has 30+ graded picks."]
+    ]},
+
+    {"type": "heading", "text": "The integrity model — why the numbers can be trusted", "level": 2},
+    {"type": "table", "widths": [160, 300], "rows": [
+      ["Append-only ledger", "Picks are written in pen. No agent may edit or delete one. The only allowed mutation: the grader stamps WIN/LOSS once, after the match. 300+ picks, zero rewrites."],
+      ["The gate", "Agents can't touch the database. Submissions go through a validating checkpoint: exact JSON contract, selection must be one of the two teams, confidence 0.5-1.0, reasoning under 100 words, one pick per agent per match. 14 rejection tests + duplicate probes pass."],
+      ["Brier scoring", "Every graded pick gets (confidence - outcome) squared. Confidently wrong hurts far more than humbly wrong — a 90% miss costs 0.81, a 50% coin-flip miss only 0.25. Agents must be as right as they claim to score well."],
+      ["Calibration view", "The dashboard bucketizes every agent's picks by confidence and shows actual win rate per bucket — overconfidence is visible, not arguable."],
+      ["The debate arena", "Before matches, agents cross-examine each other's picks with ledger-grounded facts (form cites last-5 momentum, h2h cites fixture history, chalkbot cites 30-day rates). 70+ critiques logged. The transcript is append-only too."],
+      ["Testing", "38 dashboard checks + 23 smoke tests + 14 gate tests + 43 sage tests — all run on every change, throwaway databases only."]
+    ]},
+
+    {"type": "heading", "text": "What the humans see", "level": 2},
+    {"type": "paragraph", "text": "The public dashboard (sntvnce.github.io/cvbets) is a dark-themed, tabbed strategy room: Overview (standings), Picks & Pending (300 pending picks across 86 matches with LIVE badges and pick ages), Results (46 graded with scores and Brier), Teams (134 expandable team profile cards — last-10 form, 30-day rates, all-time records, sparklines), Debate (the five most contested matches with every position and objection), and Calibration (confidence vs reality). Sortable, filterable, zero-JS fallback, one self-contained page."},
+    {"type": "paragraph", "text": "Discord is the social layer: a bot with full tool access lives on the VM and answers four allowed humans — standings on demand, pick explanations, even code edits pushed to GitHub from a phone. Nightly summaries and debate stages are posted automatically. A tagged welcome message explains the house rules to new crew members."},
+
+    {"type": "heading", "text": "The scoreboard today", "level": 2},
+    {"type": "table", "widths": [110, 90, 90, 90, 100], "rows": [
+      ["Agent", "Graded", "W-L", "Win rate", "Mean Brier"],
+      ["chalkbot", "44", "26-18", "59.1%", "0.2500"],
+      ["form", "1", "0-1", "0.0%", "0.2500"],
+      ["h2h", "1", "0-1", "0.0%", "0.2500"],
+      ["sage", "1", "0-1", "0.0%", "0.2500"]
+    ]},
+    {"type": "paragraph", "text": "Early days: 2,588 matches tracked, 305 picks logged, 46 graded, 259 awaiting results. The real experiment — does sage's debate-informed reasoning beat deterministic formulas? — needs ~100 graded picks per agent to answer. The system will produce that data on its own."},
+
+    {"type": "heading", "text": "Engineering notes worth stealing", "level": 2},
+    {"type": "table", "widths": [160, 300], "rows": [
+      ["Idempotent everything", "Every stage can run twice with zero side effects. Compression guards stop stale API data from clobbering finished results. Grading is guarded by result IS NULL. Crashes lose nothing."],
+      ["The repo is the product", "Code + ledger + dashboard live in git. Pushing IS deploying: the nightly run executes whatever is committed. Rollback = git revert."],
+      ["Graceful degradation", "sage skips itself cleanly where Ollama doesn't exist (GitHub Actions); the dashboard renders fully with JavaScript disabled; missing debate data renders as 'unanimous pick'."],
+      ["One source of truth", "The SQLite ledger is committed to git nightly by the cloud. Local copies converge; nothing diverges."],
+      ["Self-hosting agent ops", "The bot's own state (memories, skills, sessions) is backed up nightly by a script the bot infrastructure runs — agents maintaining agents."]
+    ]},
+
+    {"type": "heading", "text": "The stack", "level": 2},
+    {"type": "paragraph", "text": "Python 3 stdlib + httpx. SQLite (WAL). Vanilla JS. GitHub Actions + Pages. One 2-vCPU VPS. Ollama cloud (GLM). Discord webhooks + bot. Total monthly cost: about $14 — the VPS. Everything else is free tiers. No frameworks, no build step, no vendor lock-in: the whole system is ~2,000 lines of readable Python plus one HTML file."},
+
+    {"type": "heading", "text": "What's next", "level": 2},
+    {"type": "paragraph", "text": "Phase 5 items, in the order the data will demand them: an odds source (unlocks ROI — the number that separates accurate from profitable), the 'chief' consensus agent, automated post-mortems written into the debate table (the agents' learning loop), and a season-ending calibration report per agent. The scoreboard never sleeps."}
+  ]
+}
