@@ -16,6 +16,26 @@ export GITHUB_TOKEN_FILE="$TOKEN_FILE"
 cd "$REPO"
 # scripts/ exec-bit noise (from clones/checkouts) must never block pulls/merges
 git config core.fileMode false
+# Untracked copies of tracked files (e.g. scripts/run_sage.sh restored from a
+# stash) block 'git pull --ff-only' with 'untracked working tree files would be
+# overwritten'. Remove them AFTER the pull instead: pull with stale-untracked
+# tolerance, then restore missing tracked files from the remote state.
+if [ -n "$(git status --porcelain | grep -E '^\?\?')" ]; then
+  echo "note: untracked files present; moving them aside before pull"
+  mkdir -p /tmp/cvbets-untracked
+  git status --porcelain | grep -E '^\?\?' | cut -c4- | while IFS= read -r f; do
+    case "$f" in *'*'|*'?'*) continue ;; esac
+    mkdir -p "/tmp/cvbets-untracked/$(dirname "$f")"
+    mv "$f" "/tmp/cvbets-untracked/$f" 2>/dev/null || true
+  done
+  git pull --ff-only -q || git pull -q || echo "WARN: git pull failed; continuing with local ledger"
+  # restore anything the pull didn't bring in
+  git status --porcelain | grep -E '^\?\?' | cut -c4- | while IFS= read -r f; do
+    mv "/tmp/cvbets-untracked/$f" "$f" 2>/dev/null || true
+  done
+else
+  git pull --ff-only -q || echo "WARN: git pull --ff-only failed; continuing with local ledger"
+fi
 
 PUSHED=0
 for attempt in 1 2 3; do

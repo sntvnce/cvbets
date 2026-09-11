@@ -38,7 +38,8 @@ MODEL = "glm-5.3-flash:cloud"
 ENDPOINT = "http://127.0.0.1:11434/v1/chat/completions"
 MAX_MATCHES = 40          # hard cap per run
 SLEEP_S = 1.0             # between LLM calls
-PROBE_TIMEOUT_S = 10
+PROBE_TIMEOUT_S = 60      # cloud model can queue behind other Ollama traffic;
+                          # 10s caused false 'endpoint unreachable' skips
 LLM_TIMEOUT_S = 120
 MAX_TOKENS = 3000         # glm-5.3-flash is a reasoner: it burns tokens thinking
 TEMPERATURE = 0.2
