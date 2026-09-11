@@ -1,0 +1,50 @@
+name: history backfill
+
+on:
+  workflow_dispatch:
+    inputs:
+      start_date:
+        description: 'Oldest match date to fetch (YYYY-MM-DD)'
+        required: false
+        default: '2024-09-11'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: history-backfill
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install httpx
+
+      - name: Backfill 2 years of CS2 history
+        env:
+          PANDASCORE_TOKEN: ${{ secrets.PANDASCORE_TOKEN }}
+        run: |
+          python scripts/backfill_history.py \
+            --start "${{ inputs.start_date || '2024-09-11' }}" \
+            --max-pages 600
+
+      - name: Commit expanded ledger
+        run: |
+          git config user.name "cvbets-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/ledger.db
+          if git diff --cached --quiet; then
+            echo "no new history to commit"
+          else
+            git commit -m "history: backfill matches to ${{ inputs.start_date || '2024-09-11' }}"
+            git push
+          fi
